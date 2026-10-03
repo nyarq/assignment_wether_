@@ -5,6 +5,7 @@
 - Open-Meteo API 사용 (인증키 불필요, 무료)
 """
 
+from datetime import datetime
 from typing import Optional
 
 import requests
@@ -18,6 +19,38 @@ FORECAST_DAYS = 3
 TARGET_HOURS = (6, 15)  # 오전 6 시, 오후 3 시
 DAY_LABELS = ("오늘", "내일", "모레")
 TIMEOUT = 10
+
+# WMO 날씨 코드 -> 한글 설명
+WEATHER_CODES = {
+    0: "맑음",
+    1: "대체로 맑음",
+    2: "구름 조금",
+    3: "흐림",
+    45: "안개",
+    48: "서리 안개",
+    51: "약한 이슬비",
+    53: "이슬비",
+    55: "강한 이슬비",
+    56: "약한 어는 이슬비",
+    57: "강한 어는 이슬비",
+    61: "약한 비",
+    63: "비",
+    65: "강한 비",
+    66: "약한 어는 비",
+    67: "강한 어는 비",
+    71: "약한 눈",
+    73: "눈",
+    75: "강한 눈",
+    77: "싸락눈",
+    80: "약한 소나기",
+    81: "소나기",
+    82: "강한 소나기",
+    85: "약한 눈 소나기",
+    86: "강한 눈 소나기",
+    95: "뇌우",
+    96: "약한 우박 동반 뇌우",
+    99: "강한 우박 동반 뇌우",
+}
 
 
 def get_coordinates(region: str) -> Optional[dict]:
@@ -85,7 +118,7 @@ def build_report(forecast: dict) -> list:
             code = hourly["weather_code"][i]
             slots.append({
                 "hour": hour,
-                "weather": code,
+                "weather": WEATHER_CODES.get(code, f"알 수 없음({code})"),
                 "temperature": round(hourly["temperature_2m"][i]),
                 "precipitation_probability": hourly["precipitation_probability"][i],
                 "humidity": hourly["relative_humidity_2m"][i],
@@ -99,6 +132,34 @@ def build_report(forecast: dict) -> list:
             "temp_max": round(daily["temperature_2m_max"][day_index]),
         })
     return report
+
+
+def print_report(region: str, report: list) -> None:
+    """날씨 리포트를 화면에 출력한다."""
+    print()
+    print("=" * 70)
+    print(f"🌤️ {region} 날씨 예보 (오전 6 시 / 오후 3 시 기준)")
+    print("=" * 70)
+
+    for day in report:
+        date = datetime.strptime(day["date"], "%Y-%m-%d")
+        print()
+        print(f"📅 {day['label']} ({date:%m.%d.})")
+        print("-" * 60)
+        for slot in day["slots"]:
+            if slot["hour"] < 12:
+                print(f"  🌅 오전 {slot['hour']:02d}:00")
+            else:
+                print(f"  🌇 오후 {slot['hour']:02d}:00")
+            print(f"     날씨: {slot['weather']}")
+            print(f"     기온: {slot['temperature']} °C")
+            print(f"     강수확률: {slot['precipitation_probability']}%")
+            print(f"     습도: {slot['humidity']}%")
+            print(f"     풍속: {slot['wind_speed']} m/s")
+            print()
+        print(f"  🌡️ 일일 기온: 최저 {day['temp_min']} °C / 최고 {day['temp_max']} °C")
+        print()
+        print("=" * 70)
 
 
 def main() -> None:
@@ -126,8 +187,7 @@ def main() -> None:
         return
 
     report = build_report(forecast)
-    for day in report:
-        print(day)
+    print_report(region, report)
 
 
 if __name__ == "__main__":
