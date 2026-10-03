@@ -5,6 +5,7 @@
 - Open-Meteo API 사용 (인증키 불필요, 무료)
 """
 
+import json
 from datetime import datetime
 from typing import Optional
 
@@ -162,6 +163,19 @@ def print_report(region: str, report: list) -> None:
         print("=" * 70)
 
 
+def save_json(region: str, report: list) -> str:
+    """날씨 리포트를 JSON 파일로 저장하고 파일 이름을 반환한다."""
+    filename = f"weather_{region}_{datetime.now():%Y%m%d_%H%M%S}.json"
+    data = {
+        "region": region,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "forecast": report,
+    }
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return filename
+
+
 def main() -> None:
     print("🌤️ 날씨 예보 프로그램 (Open-Meteo API)")
     print("-" * 50)
@@ -188,6 +202,12 @@ def main() -> None:
 
     report = build_report(forecast)
     print_report(region, report)
+
+    print()
+    answer = input("날씨 정보를 JSON 파일로 저장하시겠습니까? (y/n): ").strip().lower()
+    if answer == "y":
+        filename = save_json(region, report)
+        print(f"💾 '{filename}' 파일로 저장했습니다.")
 
 
 if __name__ == "__main__":
