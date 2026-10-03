@@ -48,6 +48,59 @@ def get_coordinates(region: str) -> Optional[dict]:
     return None
 
 
+def get_forecast(latitude: float, longitude: float) -> Optional[dict]:
+    """Open-Meteo 에서 시간별/일별 예보를 가져온다."""
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "hourly": "temperature_2m,relative_humidity_2m,precipitation_probability,"
+                  "weather_code,wind_speed_10m",
+        "daily": "temperature_2m_max,temperature_2m_min",
+        "wind_speed_unit": "ms",
+        "timezone": "Asia/Seoul",
+        "forecast_days": FORECAST_DAYS,
+    }
+    try:
+        response = requests.get(FORECAST_URL, params=params, timeout=TIMEOUT)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"❌ 날씨 정보를 가져오는 중 오류가 발생했습니다: {e}")
+        return None
+    return response.json()
+
+
+def build_report(forecast: dict) -> list:
+    """API 응답에서 날짜별 오전 6 시 / 오후 3 시 데이터를 뽑아 정리한다."""
+    hourly = forecast["hourly"]
+    daily = forecast["daily"]
+    index_by_time = {t: i for i, t in enumerate(hourly["time"])}
+
+    report = []
+    for day_index, date_str in enumerate(daily["time"]):
+        slots = []
+        for hour in TARGET_HOURS:
+            i = index_by_time.get(f"{date_str}T{hour:02d}:00")
+            if i is None:
+                continue
+            code = hourly["weather_code"][i]
+            slots.append({
+                "hour": hour,
+                "weather": code,
+                "temperature": round(hourly["temperature_2m"][i]),
+                "precipitation_probability": hourly["precipitation_probability"][i],
+                "humidity": hourly["relative_humidity_2m"][i],
+                "wind_speed": round(hourly["wind_speed_10m"][i]),
+            })
+        report.append({
+            "date": date_str,
+            "label": DAY_LABELS[day_index] if day_index < len(DAY_LABELS) else f"{day_index}일 후",
+            "slots": slots,
+            "temp_min": round(daily["temperature_2m_min"][day_index]),
+            "temp_max": round(daily["temperature_2m_max"][day_index]),
+        })
+    return report
+
+
 def main() -> None:
     print("🌤️ 날씨 예보 프로그램 (Open-Meteo API)")
     print("-" * 50)
@@ -67,7 +120,14 @@ def main() -> None:
     print()
     print(f"📍 {region} (위도: {location['latitude']:.4f}, 경도: {location['longitude']:.4f}) "
           f"의 날씨 정보를 가져옵니다...")
-    # TODO: 날씨 API 연동
+
+    forecast = get_forecast(location["latitude"], location["longitude"])
+    if forecast is None:
+        return
+
+    report = build_report(forecast)
+    for day in report:
+        print(day)
 
 
 if __name__ == "__main__":
