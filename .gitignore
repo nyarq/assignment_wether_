@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# VS Code 설정, 프로그램이 만든 날씨 JSON 파일
+.vscode/
+weather_*.json
