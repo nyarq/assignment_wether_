@@ -3,6 +3,8 @@
 - 사용자에게 지역을 입력받음 (기본값: 천안)
 - 오늘, 내일, 모레까지 3 일간의 날씨를 오전 6 시, 오후 3 시 기준으로 표시
 - Open-Meteo API 사용 (인증키 불필요, 무료)
+
+GitHub 저장소: https://github.com/nyarq/assignment_wether_
 """
 
 import json
